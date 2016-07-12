@@ -1,6 +1,7 @@
 package com.example.ljd.mylibstreaming.LibRTSP.stream;
 
 import android.media.MediaCodec;
+import android.media.MediaExtractor;
 import android.util.Log;
 
 import com.example.ljd.mylibstreaming.LibRTSP.rtp.AbstractPacketizer;
@@ -25,9 +26,11 @@ public abstract class MediaStream implements Stream {
     protected InetAddress mDestination;
     private int mTTL = 64;
     protected MediaCodec mMediaCodec;
+    protected MediaExtractor mediaExtractor;
     protected Session mSession;
 
     public MediaStream(Session session) {
+        this.mSession = session;
         this.mDestination = session.getDestinationAddress();
         setDestinationPorts(session.getDestinationPort());
         if(VERBOSE) Log.v(TAG,"session.getDestinationPort() IS "+session.getDestinationPort());
@@ -125,7 +128,7 @@ public abstract class MediaStream implements Stream {
     /**
      * Configures the stream with the settings supplied with
      */
-    public synchronized void configure() throws IllegalStateException, IOException {
+    public synchronized void configure(Session session) throws IllegalStateException, IOException {
         if (mStreaming) throw new IllegalStateException("Can't be called while streaming.");
         if(VERBOSE) Log.v(TAG,"synchronized void configure()");
         if (mPacketizer != null) {

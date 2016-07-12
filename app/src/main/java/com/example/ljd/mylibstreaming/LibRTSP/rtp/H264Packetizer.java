@@ -3,6 +3,7 @@ package com.example.ljd.mylibstreaming.LibRTSP.rtp;
 import android.annotation.SuppressLint;
 import android.util.Log;
 
+import com.example.ljd.mylibstreaming.LibRTSP.session.Session;
 import com.example.ljd.mylibstreaming.LibRTSP.utility.RunState;
 
 import java.io.IOException;
@@ -11,7 +12,7 @@ import java.io.IOException;
  * Created by ljd-pc on 2016/6/22.
  */
 public class H264Packetizer extends AbstractPacketizer implements Runnable{
-    private boolean VERBOSE = false;
+    private boolean VERBOSE = true;
     public final static String TAG = "H264Packetizer";
 
     private Thread t = null;
@@ -22,10 +23,12 @@ public class H264Packetizer extends AbstractPacketizer implements Runnable{
     byte[] header = new byte[5];
     private int count = 0;
     private int streamType = 1;
+    private Session session;
 
 
-    public H264Packetizer() {
+    public H264Packetizer(Session session) {
         super();
+        this.session = session;
         socket.setClockFrequency(90000);
     }
 
@@ -113,111 +116,120 @@ public class H264Packetizer extends AbstractPacketizer implements Runnable{
     private void send() throws IOException, InterruptedException {
         //Log.d(TAG,"H264 packetizer send() !");
         int sum = 1, len = 0, type;
-
-        if (streamType == 0) {
-            // NAL units are preceeded by their length, we parse the length
-            fill(header,0,5);
-            ts += delay;
-            naluLength = header[3]&0xFF | (header[2]&0xFF)<<8 | (header[1]&0xFF)<<16 | (header[0]&0xFF)<<24;
-            if (naluLength>100000 || naluLength<0) resync();
-        } else if (streamType == 1) {//我们用的这个
-           // if(VERBOSE) Log.v(TAG,"streamType == 1");
-            // NAL units are preceeded with 0x00000001
-            fill(header,0,5);//从inputstream装字节到header中
-            //if(VERBOSE) Log.v(TAG,"header[4] = "+header[4]);
-            //if(VERBOSE) Log.v(TAG,"streamType == 1");
-            ts = ((MediaCodecInputStream)is).getLastBufferInfo().presentationTimeUs*1000L;
-            //ts += delay;
-            naluLength = is.available()+1;
-            //if(VERBOSE) Log.v(TAG,"streamType == 1");
-            if (!(header[0]==0 && header[1]==0 && header[2]==0)) {
-                // Turns out, the NAL units are not preceeded with 0x00000001
-                Log.e(TAG, "NAL units are not preceeded by 0x00000001");
-                streamType = 2;
-                return;
-            }
-            //if(VERBOSE) Log.v(TAG,"streamType == 1");
-        } else {
-            // Nothing preceededs the NAL units
-            if(VERBOSE) Log.v(TAG,"Nothing preceededs the NAL units");
-            fill(header,0,1);
-            header[4] = header[0];
-            ts = ((MediaCodecInputStream)is).getLastBufferInfo().presentationTimeUs*1000L;
-            //ts += delay;
-            naluLength = is.available()+1;
-        }
-
-        // Parses the NAL unit type
-        //if(VERBOSE) Log.v(TAG,"Parses the NAL unit type");
-        type = header[4]&0x1F;
-        //if(VERBOSE) Log.v(TAG,"type = "+type);
-
-        // The stream already contains NAL unit type 7 or 8, we don't need
-        // to add them to the stream ourselves
-        if (type == 7 || type == 8) {
-            if(VERBOSE) Log.v(TAG,"SPS or PPS present in the stream.");
-            count++;
-            if (count>4) {
-                sps = null;
-                pps = null;
-            }
-        }
-        //如果这一帧是I帧，而sps != null && pps != null，
-        //如果sps和pps已经发送，sps和pps会被置为Null,不为null，说明sps和pps还没有发送。
-        //那就先发送sps和pps
-        //type = 5,表示I帧
-        // We send two packets containing NALU type 7 (SPS) and 8 (PPS)
-        // Those should allow the H264 stream to be decoded even if no SDP was sent to the decoder.
-        if (type == 5 && sps != null && pps != null) {
-            if(VERBOSE) Log.v(TAG,"We send two packets containing NALU type 7 (SPS) and 8 (PPS).");
-            buffer = socket.requestBuffer();
-            socket.markNextPacket();
-            socket.updateTimestamp(ts);
-            System.arraycopy(stapa, 0, buffer, rtphl, stapa.length);
-            super.send(rtphl+stapa.length);
-        }
-
-        //Log.d(TAG,"- Nal unit length: " + naluLength + " delay: "+delay/1000000+" type: "+type);
-
-        // Small NAL unit => Single NAL unit
-        if (naluLength<=MAXPACKETSIZE-rtphl-2) {
-            //if(VERBOSE) Log.v(TAG,"naluLength<=MAXPACKETSIZE-rtphl-2");
-            buffer = socket.requestBuffer();//获取一个空buffer
-            buffer[rtphl] = header[4];
-            len = fill(buffer, rtphl+1,  naluLength-1);//向空buffer中填数据
-            socket.updateTimestamp(ts);
-            socket.markNextPacket();
-            super.send(naluLength+rtphl);//发送buffer
-            //Log.d(TAG,"----- Single NAL unit - len:"+len+" delay: "+delay);
-        }
-        // Large NAL unit => Split nal unit
-        else {
-            //if(VERBOSE) Log.v(TAG,"Large NAL unit => Split nal unit");
-            // Set FU-A header
-            header[1] = (byte) (header[4] & 0x1F);  // FU header type
-            header[1] += 0x80; // Start bit
-            // Set FU-A indicator
-            header[0] = (byte) ((header[4] & 0x60) & 0xFF); // FU indicator NRI
-            header[0] += 28;
-
-            while (sum < naluLength) {
-                buffer = socket.requestBuffer();
-                buffer[rtphl] = header[0];
-                buffer[rtphl+1] = header[1];
-                socket.updateTimestamp(ts);
-                if ((len = fill(buffer, rtphl+2,  naluLength-sum > MAXPACKETSIZE-rtphl-2 ? MAXPACKETSIZE-rtphl-2 : naluLength-sum  ))<0) return; sum += len;
-                // Last packet before next NAL
-                if (sum >= naluLength) {
-                    // End bit on
-                    buffer[rtphl+1] += 0x40;
-                    socket.markNextPacket();
+        //if(session.getSessionType() == 1) {
+            if (streamType == 0) {
+                // NAL units are preceeded by their length, we parse the length
+                fill(header, 0, 5);
+                ts += delay;
+                naluLength = header[3] & 0xFF | (header[2] & 0xFF) << 8 | (header[1] & 0xFF) << 16 | (header[0] & 0xFF) << 24;
+                if (naluLength > 100000 || naluLength < 0) resync();
+            } else if (streamType == 1) {//我们用的这个
+                // if(VERBOSE) Log.v(TAG,"streamType == 1");
+                // NAL units are preceeded with 0x00000001
+                fill(header, 0, 5);//从inputstream装字节到header中
+                //if(VERBOSE) Log.v(TAG,"header[4] = "+header[4]);
+                if(session.getSessionType() == 1) {
+                    ts = ((MediaCodecInputStream) is).getLastBufferInfo().presentationTimeUs * 1000L;
                 }
-                super.send(len+rtphl+2);
-                // Switch start bit
-                header[1] = (byte) (header[1] & 0x7F);
-                //Log.d(TAG,"----- FU-A unit, sum:"+sum);
+                if(session.getSessionType() == 3){
+                    ts = ((MediaExtractorInputStream) is).getLastBufferInfo().presentationTimeUs * 1000L;
+                }
+                //ts += delay;
+                naluLength = is.available() + 1;
+                if (!(header[0] == 0 && header[1] == 0 && header[2] == 0)) {
+                    // Turns out, the NAL units are not preceeded with 0x00000001
+                    Log.e(TAG, "NAL units are not preceeded by 0x00000001");
+                    streamType = 2;
+                    return;
+                }
+            } else {
+                // Nothing preceededs the NAL units
+                if (VERBOSE) Log.v(TAG, "Nothing preceededs the NAL units");
+                fill(header, 0, 1);
+                header[4] = header[0];
+                ts = ((MediaCodecInputStream) is).getLastBufferInfo().presentationTimeUs * 1000L;
+                //ts += delay;
+                naluLength = is.available() + 1;
             }
-        }
+
+            // Parses the NAL unit type
+            //if(VERBOSE) Log.v(TAG,"Parses the NAL unit type");
+            type = header[4] & 0x1F;
+            if(VERBOSE) Log.v(TAG,"type = "+type);
+
+            // The stream already contains NAL unit type 7 or 8, we don't need
+            // to add them to the stream ourselves
+            if (type == 7 || type == 8) {
+                if (VERBOSE) Log.v(TAG, "SPS or PPS present in the stream.");
+                count++;
+                if (count > 4) {
+                    sps = null;
+                    pps = null;
+                }
+            }
+            //如果这一帧是I帧，而sps != null && pps != null，
+            //如果sps和pps已经发送，sps和pps会被置为Null,不为null，说明sps和pps还没有发送。
+            //那就先发送sps和pps
+            //type = 5,表示I帧
+            // We send two packets containing NALU type 7 (SPS) and 8 (PPS)
+            // Those should allow the H264 stream to be decoded even if no SDP was sent to the decoder.
+            if (type == 5 && sps != null && pps != null) {
+                if (VERBOSE)
+                    Log.v(TAG, "We send two packets containing NALU type 7 (SPS) and 8 (PPS).");
+                buffer = socket.requestBuffer();
+                socket.markNextPacket();
+                socket.updateTimestamp(ts);
+                System.arraycopy(stapa, 0, buffer, rtphl, stapa.length);
+                super.send(rtphl + stapa.length);
+            }
+
+            //Log.d(TAG,"- Nal unit length: " + naluLength + " delay: "+delay/1000000+" type: "+type);
+
+            // Small NAL unit => Single NAL unit
+            if (naluLength <= MAXPACKETSIZE - rtphl - 2) {
+                //if(VERBOSE) Log.v(TAG,"naluLength<=MAXPACKETSIZE-rtphl-2");
+                buffer = socket.requestBuffer();//获取一个空buffer
+                buffer[rtphl] = header[4];
+                len = fill(buffer, rtphl + 1, naluLength - 1);//向空buffer中填数据
+                socket.updateTimestamp(ts);
+                socket.markNextPacket();
+                super.send(naluLength + rtphl);//发送buffer
+                if(VERBOSE) Log.d(TAG,"----- Single NAL unit - len:"+len+" delay: "+delay);
+            }
+            // Large NAL unit => Split nal unit
+            else {
+                //if(VERBOSE) Log.v(TAG,"Large NAL unit => Split nal unit");
+                // Set FU-A header
+                header[1] = (byte) (header[4] & 0x1F);  // FU header type
+                header[1] += 0x80; // Start bit
+                // Set FU-A indicator
+                header[0] = (byte) ((header[4] & 0x60) & 0xFF); // FU indicator NRI
+                header[0] += 28;
+
+                while (sum < naluLength) {
+                    buffer = socket.requestBuffer();
+                    buffer[rtphl] = header[0];
+                    buffer[rtphl + 1] = header[1];
+                    socket.updateTimestamp(ts);
+                    if ((len = fill(buffer, rtphl + 2, naluLength - sum > MAXPACKETSIZE - rtphl - 2 ? MAXPACKETSIZE - rtphl - 2 : naluLength - sum)) < 0)
+                        return;
+                    sum += len;
+                    // Last packet before next NAL
+                    if (sum >= naluLength) {
+                        // End bit on
+                        buffer[rtphl + 1] += 0x40;
+                        socket.markNextPacket();
+                    }
+                    super.send(len + rtphl + 2);
+                    // Switch start bit
+                    header[1] = (byte) (header[1] & 0x7F);
+                    //Log.d(TAG,"----- FU-A unit, sum:"+sum);
+                }
+            }
+        //}
+//        if (session.getSessionType() == 3){
+//
+//        }
     }
     //获取codec数据到buffer
     private int fill(byte[] buffer, int offset,int length) throws IOException {

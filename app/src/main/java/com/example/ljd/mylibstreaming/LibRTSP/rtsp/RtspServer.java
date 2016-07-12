@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.media.MediaCodec;
+import android.media.MediaExtractor;
 import android.os.Binder;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
@@ -32,6 +33,7 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Locale;
@@ -58,18 +60,12 @@ public class RtspServer extends Service {
 
     /** A stream could not be started. */
     public final static int ERROR_START_FAILED = 0x01;
-
-    /** Streaming started. */
-    public final static int MESSAGE_STREAMING_STARTED = 0X00;
-
-    /** Streaming stopped. */
-    public final static int MESSAGE_STREAMING_STOPPED = 0X01;
-
     protected boolean mEnabled = true;
     protected int mPort = DEFAULT_RTSP_PORT;
 
     protected WeakHashMap<MediaStream,Object> mMediaStreams = new WeakHashMap<MediaStream,Object>();
     protected WeakHashMap<MediaCodec,Object> mMediaCodecs = new WeakHashMap<MediaCodec,Object>();
+    protected ArrayList<MediaExtractor> mediaExtractors = new ArrayList<MediaExtractor>();
     private RequestListener mListenerThread;
     private final IBinder mBinder = new LocalBinder();
     private boolean mRestart = false;
@@ -79,6 +75,7 @@ public class RtspServer extends Service {
 
     private Session mSession;
     public MediaCodec mediaCodec;
+    public MediaExtractor mediaExtractor;
 
 
     /** Credentials for Basic Auth */
@@ -180,6 +177,12 @@ public class RtspServer extends Service {
                         mediaCodec.release();
                         mediaCodec.stop();
                     }
+                }
+                for(MediaExtractor mediaExtractor : mediaExtractors){
+                    if(mediaExtractor != null){
+                        mediaExtractor.release();
+                    }
+
                 }
             } catch (Exception e) {
             } finally {
@@ -401,14 +404,16 @@ public class RtspServer extends Service {
 
             // Streaming stops when client disconnects
             //boolean streaming = isStreaming();
-            mediaStream.stop();
-            mediaEncorder.stop();
+//            mediaStream.stop();
+//            mediaEncorder.stop();
 //            if (streaming && !isStreaming()) {
 //                postMessage(MESSAGE_STREAMING_STOPPED);
 //            }
 
             try {
-                mClient.close();
+                if(mClient!=null) {
+                    mClient.close();
+                }
             } catch (IOException ignore) {}
 
             Log.i(TAG, "Client disconnected");
@@ -438,15 +443,25 @@ public class RtspServer extends Service {
                         if(VERBOSE) Log.v(TAG,"sessionType == 1");
                         mStreamFactory = VideoStreamFactory.getInstance();
                         mEncorderFactory = VideoEncorderFactory.getInstance();
-                        mediaEncorder = mEncorderFactory.CreateEncorder(mSession.getVideoQuality(),mSession.getMediaProjection());
+                        mediaEncorder = mEncorderFactory.CreateEncorder(mSession);
                         mediaEncorder.encodeWithMediaCodec();
-                        mediaCodec = mediaEncorder.getMediaEncorder();
-                        mediaStream =  mStreamFactory.CreateStream(mediaCodec,mSession);
+                        mediaCodec = mediaEncorder.getMediaEncorder1();
+                        mediaStream =  mStreamFactory.CreateStream(mediaCodec,null,mSession);
                         mMediaCodecs.put(mediaCodec,mediaCodec);
                         mMediaStreams.put(mediaStream,mediaStream);
                     }
+                    if(sessionType == 3){
+                        if(VERBOSE) Log.v(TAG,"sessionType == 3");
+                        mStreamFactory = VideoStreamFactory.getInstance();
+                        mEncorderFactory = VideoEncorderFactory.getInstance();
+                        mediaEncorder = mEncorderFactory.CreateEncorder(mSession);
+                        mediaExtractor = mediaEncorder.getMediaEncorder3();
+                        mediaStream =  mStreamFactory.CreateStream(null,mediaExtractor,mSession);
+                        mediaExtractors.add(mediaExtractor);
+                        mMediaStreams.put(mediaStream,mediaStream);
+                    }
                     //mSessions.put(mSession, null);
-                    mediaStream.configure();
+                    mediaStream.configure(mSession);
                     String requestContent = mSession.getSessionDescription();
                     requestContent = requestContent+mediaStream.getSessionDescription();
                     String requestAttributes =

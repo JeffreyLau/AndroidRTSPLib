@@ -11,8 +11,4 @@ public class VideoEncorder extends MediaEncorder{
     public void encodeWithMediaCodec(){}
     public void stop(){}
 
-    @Override
-    public MediaCodec getMediaEncorder() {
-        return null;
-    }
 }

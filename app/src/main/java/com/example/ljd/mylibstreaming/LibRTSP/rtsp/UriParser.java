@@ -47,7 +47,7 @@ public class UriParser {
     public static Session parse(String uri,Session sessionForClone) throws IllegalStateException, IOException {
         //当解析得到的结果，要求产生一个视频session时。
         AbstractSessionFactory mSessionFactory = VideoSessionFactory.getInstance();
-        Session mSession = mSessionFactory.CreatSession(1,sessionForClone.getVideoPath(),sessionForClone.getDestination(),sessionForClone.getDestinationPort()
+        Session mSession = mSessionFactory.CreatSession(sessionForClone.getSessionType(),sessionForClone.getVideoPath(),sessionForClone.getDestination(),sessionForClone.getDestinationPort()
                 ,sessionForClone.getVideoQuality(),sessionForClone.getTimeToLive(),
                 sessionForClone.getOrigin(),sessionForClone.getOriginPort(),sessionForClone.getMediaProjection());
         return mSession;

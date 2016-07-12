@@ -13,7 +13,7 @@ import java.nio.ByteBuffer;
 
 /**
  * Created by ljd-pc on 2016/6/22.
- * 用于获取视频流的 SPS 和 PPS
+ * 用于获取实时录制的视频流的 SPS 和 PPS
  * 将一个全0矩阵写到本地mp4文件中，获取SPS和PPS
  */
 public class PpsSpsGetter {
@@ -30,7 +30,9 @@ public class PpsSpsGetter {
     private byte[] yuv420;
     private int framerate;
 
-
+    public PpsSpsGetter(String fileName){
+        getLocalFileSPSandPPS(fileName);
+    }
     public PpsSpsGetter(VideoQuality mVideoQuality){
         mScreenWidth = mVideoQuality.getmWidth();
         mScreenHeight = mVideoQuality.getmHeight();
@@ -135,6 +137,20 @@ public class PpsSpsGetter {
         mSPS = Base64.encodeToString(mSPSbyte, 0, mSPSbyte.length, Base64.NO_WRAP);
         mProfilLevel = PpsSpsGetter.toHexString(Base64.decode(mSPS, Base64.NO_WRAP),1,3);
         releaseEncoder();
+    }
+
+    public void getLocalFileSPSandPPS(String fileName){
+        ObtainSPSAndPPS obtainSPSAndPPS = new ObtainSPSAndPPS();
+        try {
+            obtainSPSAndPPS.getSPSAndPPS(fileName);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        mPPSbyte = obtainSPSAndPPS.getPPS();
+        mSPSbyte = obtainSPSAndPPS.getSPS();
+        mPPS = Base64.encodeToString(mPPSbyte, 0, mPPSbyte.length, Base64.NO_WRAP);
+        mSPS = Base64.encodeToString(mSPSbyte, 0, mSPSbyte.length, Base64.NO_WRAP);
+        mProfilLevel = PpsSpsGetter.toHexString(Base64.decode(mSPS, Base64.NO_WRAP),1,3);
     }
 
     private void releaseEncoder() {

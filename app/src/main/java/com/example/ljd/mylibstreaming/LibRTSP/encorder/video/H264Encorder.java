@@ -69,7 +69,7 @@ public class H264Encorder extends VideoEncorder {
         mMediaCodec = null;
     }
 
-    public MediaCodec getMediaEncorder(){
+    public MediaCodec getMediaEncorder1(){
         return mMediaCodec;
     }
 }

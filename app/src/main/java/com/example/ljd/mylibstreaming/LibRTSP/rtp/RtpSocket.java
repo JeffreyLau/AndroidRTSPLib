@@ -243,7 +243,8 @@ public class RtpSocket implements Runnable{
                         //由于采用的生产者/消费者模式。导致视频采样时间不能无限大，而是与网络发送时间相匹配。
                         //时间戳即为首字节的采样时间，通过时间戳可以计算出采样的时间间隔。
                         //然后通过这个时间间隔，设定为网络发送的时间间隔。
-                        if (mCacheSize>0) Thread.sleep(d);//拥塞控制
+                        //if (mCacheSize>0)
+                            Thread.sleep(d);//拥塞控制
                     } else if ((mTimestamps[mBufferOut]-mOldTimestamp)<0) {
                         Log.e(TAG, "TS: "+mTimestamps[mBufferOut]+" OLD: "+mOldTimestamp);
                     }

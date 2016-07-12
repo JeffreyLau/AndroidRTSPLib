@@ -7,11 +7,16 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.media.MediaMetadataRetriever;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
 import android.os.Build;
+import android.os.Environment;
 import android.os.IBinder;
 import android.preference.PreferenceManager;
+import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -51,14 +56,18 @@ public class MainActivity extends AppCompatActivity {
     private int mDestinationPort = 5006;
     private int mOriginPort = 1234;
 
-
+    private static final String SDCARD_PATH  = Environment.getExternalStorageDirectory().getPath();
+    private static final String VIDEO_PATH = SDCARD_PATH+"/ljd/mp4/dxflqm.mp4";
+    private int SESSION_TYPE = 0;
+    private int TYPE_VIDEO_H264 = 1;
+    private int TYPE_VIDEO_MP4_FILE = 3;
     private Session session;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
+        SESSION_TYPE = TYPE_VIDEO_MP4_FILE;
         tbtScreenCaptureService = (ToggleButton) findViewById(R.id.tbt_screen_capture_service);
 
         mMediaProjectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
@@ -67,7 +76,7 @@ public class MainActivity extends AppCompatActivity {
             //如果刚启动的话
             mMediaProjectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
             startActivityForResult(mMediaProjectionManager.createScreenCaptureIntent(), CAPTURE_CODE);
-            GetWindowInfo();
+            GetMediaInfo();
             AskForPermission();
         }
         myBindService();
@@ -99,6 +108,7 @@ public class MainActivity extends AppCompatActivity {
 
             }
             SetSession();
+
         }
     }
     private void AskForPermission(){
@@ -108,8 +118,6 @@ public class MainActivity extends AppCompatActivity {
                     != PackageManager.PERMISSION_GRANTED) {
                 Log.v("AskForPermission()", "requestPermissions");
                 ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, WRITE_EXTERNAL_STORAGE_REQUEST_CODE);
-            } else {
-                Log.v("onActivityResult", "myThread.start(); start");
             }
             if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.INTERNET)
                     != PackageManager.PERMISSION_GRANTED) {
@@ -123,17 +131,6 @@ public class MainActivity extends AppCompatActivity {
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         Log.v("PermissionsResult","onRequestPermissionsResult");
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        switch (requestCode){
-            case WRITE_EXTERNAL_STORAGE_REQUEST_CODE:
-                if(grantResults[0] == PackageManager.PERMISSION_GRANTED){
-                    Log.v("PermissionsResult","myThread.start(); start");
-                }else{
-                    Log.i("PermissionsResult","WRITE_EXTERNAL_STORAGE permission denied");
-                }
-                break;
-            default:
-                break;
-        }
     }
 
     //绑定服务时调用
@@ -174,12 +171,33 @@ public class MainActivity extends AppCompatActivity {
         Log.v(TAG,"mScreenWidth is :"+mScreenWidth+";mScreenHeight is :"+mScreenHeight+"mScreenDensity is :"+mScreenDensity);
     }
 
+    private void GetMP4Info(){
+        MediaMetadataRetriever retr = new MediaMetadataRetriever();
+        retr.setDataSource(VIDEO_PATH);
+        Bitmap bm = retr.getFrameAtTime();
+        mScreenWidth = bm.getWidth();
+        mScreenHeight = bm.getHeight();
+        mScreenDensity = bm.getDensity();
+        Log.v(TAG,"mScreenWidth is :"+mScreenWidth+";mScreenHeight is :"+mScreenHeight+"mScreenDensity is :"+mScreenDensity);
+    }
+    private void GetMediaInfo(){
+        if(SESSION_TYPE == TYPE_VIDEO_H264){
+            GetWindowInfo();
+        }
+        if(SESSION_TYPE == TYPE_VIDEO_MP4_FILE){
+            GetMP4Info();
+        }
+    }
+
     private void SetSession(){
         Log.v(TAG,"SetSessionBuilder()");
-        session = new Session(1,
+//        session = new Session(SESSION_TYPE,
+//                new VideoQuality(mScreenWidth,mScreenHeight,30,8000000,mScreenDensity),200,
+//                mOriginPort,mMediaProjection);
+//        session.setDestinationPort(mDestinationPort);
+        session = new Session(SESSION_TYPE,VIDEO_PATH,null,mDestinationPort,
                 new VideoQuality(mScreenWidth,mScreenHeight,30,8000000,mScreenDensity),200,
-                mOriginPort,mMediaProjection);
-        session.setDestinationPort(mDestinationPort);
+                null,mOriginPort,mMediaProjection);
     }
 
     private void myShareScreen(){

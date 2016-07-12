@@ -1,5 +1,7 @@
 package com.example.ljd.mylibstreaming.LibRTSP.stream;
 
+import com.example.ljd.mylibstreaming.LibRTSP.session.Session;
+
 import java.io.IOException;
 import java.net.InetAddress;
 
@@ -11,7 +13,7 @@ public interface Stream {
      * Configures the stream. You need to call this before calling {@link #getSessionDescription()}
      * to apply your configuration of the stream.
      */
-    public void configure() throws IllegalStateException, IOException;
+    public void configure(Session session) throws IllegalStateException, IOException;
 
     /**
      * Starts the stream.

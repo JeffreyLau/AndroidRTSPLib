@@ -1,6 +1,7 @@
 package com.example.ljd.mylibstreaming.LibRTSP.stream.video;
 
 import android.media.MediaCodec;
+import android.media.MediaExtractor;
 
 import com.example.ljd.mylibstreaming.LibRTSP.session.Session;
 import com.example.ljd.mylibstreaming.LibRTSP.stream.AbstractStreamFactory;
@@ -25,7 +26,13 @@ public class VideoStreamFactory extends AbstractStreamFactory {
         return videoStreamFactory;
     }
 
-    public MediaStream CreateStream(MediaCodec mMediaCodec,Session mSession){
-        return new H264Stream(mMediaCodec,mSession);
+    public MediaStream CreateStream(MediaCodec mMediaCodec, MediaExtractor mediaExtractor,Session mSession){
+        if(mSession.getSessionType() == 1) {
+            return new H264Stream(mMediaCodec, mSession);
+        }
+        if(mSession.getSessionType() == 3){
+            return new H264Stream(mediaExtractor,mSession);
+        }
+        return null;
     }
 }
