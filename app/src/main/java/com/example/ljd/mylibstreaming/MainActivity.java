@@ -24,6 +24,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.SurfaceView;
 import android.view.WindowManager;
 import android.widget.CompoundButton;
 import android.widget.Toast;
@@ -41,10 +42,8 @@ public class MainActivity extends AppCompatActivity {
     private MediaProjectionManager mMediaProjectionManager;
     public static MediaProjection mMediaProjection;
     ToggleButton tbtScreenCaptureService;
+    private SurfaceView cameraSurfaceView;
     private ScreenCaptureService.MyBinder mBinder;
-    private boolean SERVICE_HAS_BIND = false;
-    private boolean SERVICE_IS_START = false;
-    private boolean SC_IS_RUN = false;
 
     private static final int CAPTURE_CODE = 115;
     private static final int WRITE_EXTERNAL_STORAGE_REQUEST_CODE = 123;
@@ -60,6 +59,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String VIDEO_PATH = SDCARD_PATH+"/ljd/mp4/dxflqm.mp4";
     private int SESSION_TYPE = 0;
     private int TYPE_VIDEO_H264 = 1;
+    private int TYPE_VIDEO_CAMERA = 2;
     private int TYPE_VIDEO_MP4_FILE = 3;
     private Session session;
 
@@ -67,20 +67,23 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        //功能设置
         SESSION_TYPE = TYPE_VIDEO_MP4_FILE;
-        tbtScreenCaptureService = (ToggleButton) findViewById(R.id.tbt_screen_capture_service);
 
-        mMediaProjectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
+        InitUI();
 
         if (!RunState.getInstance().isRun()) {
             //如果刚启动的话
-            mMediaProjectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
-            startActivityForResult(mMediaProjectionManager.createScreenCaptureIntent(), CAPTURE_CODE);
-            GetMediaInfo();
             AskForPermission();
+            GetMediaInfo();
+            SetSession();
         }
-        myBindService();
 
+        myBindService();
+    }
+
+    private void InitUI(){
+        tbtScreenCaptureService = (ToggleButton) findViewById(R.id.tbt_screen_capture_service);
         tbtScreenCaptureService.setChecked(RunState.getInstance().isRun());
         tbtScreenCaptureService.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
@@ -96,20 +99,13 @@ public class MainActivity extends AppCompatActivity {
             }
 
         });
+        cameraSurfaceView = (SurfaceView)findViewById(R.id.camera_surfaceview);
     }
 
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         Log.v("onActivityResult","onActivityResult");
-        if (requestCode == CAPTURE_CODE) {
-            if (resultCode != RESULT_OK) {
-                return;
-            }else{
-                mMediaProjection = mMediaProjectionManager.getMediaProjection(resultCode,data);
-
-            }
-            SetSession();
-
-        }
+        mMediaProjection = mMediaProjectionManager.getMediaProjection(resultCode,data);
+        session.setMediaProjection(mMediaProjection);
     }
     private void AskForPermission(){
         if (Build.VERSION.SDK_INT >= 23) {
@@ -162,6 +158,8 @@ public class MainActivity extends AppCompatActivity {
     };
 
     private void GetWindowInfo(){
+        mMediaProjectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
+        startActivityForResult(mMediaProjectionManager.createScreenCaptureIntent(), CAPTURE_CODE);
         DisplayMetrics metrics = new DisplayMetrics();
         WindowManager mWindowManager = (WindowManager)getApplication().getSystemService(getApplication().WINDOW_SERVICE);
         mWindowManager.getDefaultDisplay().getMetrics(metrics);
@@ -191,13 +189,9 @@ public class MainActivity extends AppCompatActivity {
 
     private void SetSession(){
         Log.v(TAG,"SetSessionBuilder()");
-//        session = new Session(SESSION_TYPE,
-//                new VideoQuality(mScreenWidth,mScreenHeight,30,8000000,mScreenDensity),200,
-//                mOriginPort,mMediaProjection);
-//        session.setDestinationPort(mDestinationPort);
         session = new Session(SESSION_TYPE,VIDEO_PATH,null,mDestinationPort,
                 new VideoQuality(mScreenWidth,mScreenHeight,30,8000000,mScreenDensity),200,
-                null,mOriginPort,mMediaProjection);
+                null,mOriginPort,null);
     }
 
     private void myShareScreen(){

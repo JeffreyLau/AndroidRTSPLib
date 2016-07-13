@@ -34,7 +34,7 @@ public class Session {
 
     private int sessionType = 0;
     private int TYPE_VIDEO_H264 = 1;
-    private int TYPE_VIDEO_H263 = 2;
+    private int TYPE_VIDEO_CAMERA = 2;
     private int TYPE_VIDEO_MP4_FILE = 3;
     //private int TYPE_AUDIO_ = ...
 

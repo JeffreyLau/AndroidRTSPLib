@@ -560,12 +560,12 @@ public class RtspServer extends Service {
                 /* ********************************************************************************** */
                 else if (request.method.equalsIgnoreCase("PLAY")) {
                     String requestAttributes = "RTP-Info: ";
-                    if (mSession.getSessionType() == 3 && mediaStream!= null)
-                        //audio
-                        requestAttributes += "url=rtsp://" + mClient.getLocalAddress().getHostAddress() + ":" + mClient.getLocalPort() + "/trackID=" + 0 + ";seq=0,";
-                    if (mSession.getSessionType() == 1 && mediaStream!= null)
+//                    if (mSession.getSessionType() == 3 && mediaStream!= null)
+//                        //audio
+//                        requestAttributes += "url=rtsp://" + mClient.getLocalAddress().getHostAddress() + ":" + mClient.getLocalPort() + "/trackID=" + 0 + ";seq=0,";
+                    if (mediaStream!= null)
                         //video
-                        requestAttributes += "url=rtsp://" + mClient.getLocalAddress().getHostAddress() + ":" + mClient.getLocalPort() + "/trackID=" + 1 + ";seq=0,";
+                        requestAttributes += "url=rtsp://" + mClient.getLocalAddress().getHostAddress() + ":" + mClient.getLocalPort() + "/trackID=" + mSession.getSessionType() + ";seq=0,";
                     requestAttributes = requestAttributes.substring(0, requestAttributes.length() - 1) + "\r\nSession: 1185d20035702ca\r\n";
 
                     response.attributes = requestAttributes;
