@@ -5,18 +5,15 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
-import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.database.Cursor;
 import android.graphics.Bitmap;
+import android.hardware.camera2.CameraManager;
 import android.media.MediaMetadataRetriever;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
 import android.os.Build;
 import android.os.Environment;
 import android.os.IBinder;
-import android.preference.PreferenceManager;
-import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -24,12 +21,12 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
 import android.util.Log;
-import android.view.SurfaceView;
 import android.view.WindowManager;
 import android.widget.CompoundButton;
 import android.widget.Toast;
 import android.widget.ToggleButton;
 
+import com.example.ljd.mylibstreaming.LibRTSP.camera.Camera2VideoFragment;
 import com.example.ljd.mylibstreaming.LibRTSP.quality.VideoQuality;
 import com.example.ljd.mylibstreaming.LibRTSP.rtsp.RtspServer;
 import com.example.ljd.mylibstreaming.LibRTSP.session.Session;
@@ -38,16 +35,16 @@ import com.example.ljd.mylibstreaming.LibRTSP.utility.RunState;
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "MainActivity";
-
+    private boolean VERBOSE = true;
     private MediaProjectionManager mMediaProjectionManager;
     public static MediaProjection mMediaProjection;
     ToggleButton tbtScreenCaptureService;
-    private SurfaceView cameraSurfaceView;
     private ScreenCaptureService.MyBinder mBinder;
 
     private static final int CAPTURE_CODE = 115;
     private static final int WRITE_EXTERNAL_STORAGE_REQUEST_CODE = 123;
     private static final int INTERNET_REQUEST_CODE = 124;
+    private static final int CAMERA_REQUEST_CODE = 125;
     private int mScreenDensity;
     private int mScreenWidth;
     private int mScreenHeight;
@@ -56,34 +53,49 @@ public class MainActivity extends AppCompatActivity {
     private int mOriginPort = 1234;
 
     private static final String SDCARD_PATH  = Environment.getExternalStorageDirectory().getPath();
-    private static final String VIDEO_PATH = SDCARD_PATH+"/ljd/mp4/dxflqm.mp4";
+    private String VIDEO_PATH;
     private int SESSION_TYPE = 0;
-    private int TYPE_VIDEO_H264 = 1;
-    private int TYPE_VIDEO_CAMERA = 2;
-    private int TYPE_VIDEO_MP4_FILE = 3;
+    private int TYPE_VIDEO_H264 = 1;//屏幕录制推流功能
+    private int TYPE_VIDEO_CAMERA = 2;//摄像头推流功能
+    private int TYPE_VIDEO_MP4_FILE = 3;//本地视频文件推流功能
     private Session session;
+
+    private CameraManager mCameraManager;
+    private Camera2VideoFragment camera2VideoFragment;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         //功能设置
-        SESSION_TYPE = TYPE_VIDEO_MP4_FILE;
+        SESSION_TYPE = TYPE_VIDEO_CAMERA;
+        //设置视频文件路径
+        VIDEO_PATH = SDCARD_PATH+"/ljd/mp4/dxflqm.mp4";
 
         InitUI();
-
+        UIListener();
         if (!RunState.getInstance().isRun()) {
             //如果刚启动的话
             AskForPermission();
             GetMediaInfo();
             SetSession();
         }
-
+        if(SESSION_TYPE == TYPE_VIDEO_CAMERA) {
+            camera2VideoFragment = Camera2VideoFragment.newInstance();
+            getFragmentManager().beginTransaction()
+                    .replace(R.id.container,camera2VideoFragment )
+                    .commit();
+            camera2VideoFragment.setSession(session);
+        }
         myBindService();
     }
 
     private void InitUI(){
         tbtScreenCaptureService = (ToggleButton) findViewById(R.id.tbt_screen_capture_service);
+
+    }
+
+    private void UIListener(){
         tbtScreenCaptureService.setChecked(RunState.getInstance().isRun());
         tbtScreenCaptureService.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
@@ -99,17 +111,22 @@ public class MainActivity extends AppCompatActivity {
             }
 
         });
-        cameraSurfaceView = (SurfaceView)findViewById(R.id.camera_surfaceview);
     }
 
+
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        Log.v("onActivityResult","onActivityResult");
-        mMediaProjection = mMediaProjectionManager.getMediaProjection(resultCode,data);
-        session.setMediaProjection(mMediaProjection);
+        Log.v(TAG,"onActivityResult");
+        if(SESSION_TYPE == TYPE_VIDEO_H264){
+            mMediaProjection = mMediaProjectionManager.getMediaProjection(resultCode,data);
+            session.setMediaProjection(mMediaProjection);
+        }
+
+
+
     }
     private void AskForPermission(){
         if (Build.VERSION.SDK_INT >= 23) {
-            Log.v("AskForPermission()", "AskForPermission()");
+            Log.v(TAG, "AskForPermission()");
             if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
                     != PackageManager.PERMISSION_GRANTED) {
                 Log.v("AskForPermission()", "requestPermissions");
@@ -119,6 +136,11 @@ public class MainActivity extends AppCompatActivity {
                     != PackageManager.PERMISSION_GRANTED) {
                 Log.v("AskForPermission()", "requestPermissions");
                 ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.INTERNET}, INTERNET_REQUEST_CODE);
+            }
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+                    != PackageManager.PERMISSION_GRANTED) {
+                Log.v("AskForPermission()", "requestPermissions");
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, CAMERA_REQUEST_CODE);
             }
         }
     }
@@ -141,6 +163,7 @@ public class MainActivity extends AppCompatActivity {
 
         }
     };
+
     private RtspServer.CallbackListener mRtspCallbackListener = new RtspServer.CallbackListener() {
 
         @Override
@@ -178,12 +201,25 @@ public class MainActivity extends AppCompatActivity {
         mScreenDensity = bm.getDensity();
         Log.v(TAG,"mScreenWidth is :"+mScreenWidth+";mScreenHeight is :"+mScreenHeight+"mScreenDensity is :"+mScreenDensity);
     }
+
+    private void GetCameraInfo(){
+        DisplayMetrics metrics = new DisplayMetrics();
+        WindowManager mWindowManager = (WindowManager)getApplication().getSystemService(getApplication().WINDOW_SERVICE);
+        mWindowManager.getDefaultDisplay().getMetrics(metrics);
+        mScreenDensity = metrics.densityDpi;
+        mScreenWidth = metrics.widthPixels;
+        mScreenHeight = metrics.heightPixels;
+        Log.v(TAG,"mScreenWidth is :"+mScreenWidth+";mScreenHeight is :"+mScreenHeight+"mScreenDensity is :"+mScreenDensity);
+    }
     private void GetMediaInfo(){
         if(SESSION_TYPE == TYPE_VIDEO_H264){
             GetWindowInfo();
         }
         if(SESSION_TYPE == TYPE_VIDEO_MP4_FILE){
             GetMP4Info();
+        }
+        if(SESSION_TYPE == TYPE_VIDEO_CAMERA){
+            GetCameraInfo();
         }
     }
 
@@ -204,6 +240,9 @@ public class MainActivity extends AppCompatActivity {
         myUnbindService();
         if(!RunState.getInstance().isRun()){
             myStopService();
+        }
+        if(SESSION_TYPE == TYPE_VIDEO_CAMERA){
+
         }
         super.onDestroy();
 

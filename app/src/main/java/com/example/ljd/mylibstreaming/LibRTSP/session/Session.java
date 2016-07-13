@@ -1,10 +1,12 @@
 package com.example.ljd.mylibstreaming.LibRTSP.session;
 
 import android.content.Context;
+import android.hardware.camera2.CameraManager;
 import android.media.projection.MediaProjection;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
+import android.view.SurfaceView;
 
 import com.example.ljd.mylibstreaming.LibRTSP.quality.VideoQuality;
 
@@ -49,6 +51,12 @@ public class Session {
 
     private Handler mHandler;
     private long mTimestamp;
+
+
+
+    private SurfaceView surfaceView;
+
+    private CameraManager cameraManager;
     public Session(){
 
     }
@@ -179,13 +187,22 @@ public class Session {
     public void setSessionType(int sessionType) {
         this.sessionType = sessionType;
     }
-
-
-    public Session Clone(){
-        return new Session(sessionType,mVideoPath,mDestination,mDestinationPort,
-        mVideoQuality,mTimeToLive,
-        mOrigin,mOriginPort,mMediaProjection);
+    public CameraManager getCameraManager() {
+        return cameraManager;
     }
+
+    public void setCameraManager(CameraManager cameraManager) {
+        this.cameraManager = cameraManager;
+    }
+
+    public SurfaceView getSurfaceView() {
+        return surfaceView;
+    }
+
+    public void setSurfaceView(SurfaceView surfaceView) {
+        this.surfaceView = surfaceView;
+    }
+
     /**
      * Returns a Session Description that can be stored in a file or sent to a client with RTSP.
      * @return The Session Description.
