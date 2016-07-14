@@ -61,10 +61,6 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String SDCARD_PATH  = Environment.getExternalStorageDirectory().getPath();
     private String VIDEO_PATH;
-    private int SESSION_TYPE = 0;
-    private int TYPE_VIDEO_H264 = 1;//屏幕录制推流功能
-    private int TYPE_VIDEO_CAMERA = 2;//摄像头推流功能
-    private int TYPE_VIDEO_MP4_FILE = 3;//本地视频文件推流功能
     private Session session;
 
     private CameraManager mCameraManager;
@@ -75,7 +71,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         //设置视频文件路径
-        VIDEO_PATH = SDCARD_PATH+"/ljd/mp4/dxflqm.mp4";
+        VIDEO_PATH = SDCARD_PATH+"/AndroidRTSPLib/movie.mp4";
 
         InitUI();
         UIListener();
