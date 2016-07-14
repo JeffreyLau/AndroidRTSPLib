@@ -49,6 +49,13 @@ public class MainActivity extends AppCompatActivity {
     private int mScreenWidth;
     private int mScreenHeight;
 
+    private int mFileDensity;
+    private int mFileWidth;
+    private int mFileHeight;
+
+    private VideoQuality screenVideoQuality;
+    private VideoQuality fileVideoQulity;
+
     private int mDestinationPort = 5006;
     private int mOriginPort = 1234;
 
@@ -67,8 +74,6 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        //功能设置
-        SESSION_TYPE = TYPE_VIDEO_CAMERA;
         //设置视频文件路径
         VIDEO_PATH = SDCARD_PATH+"/ljd/mp4/dxflqm.mp4";
 
@@ -78,18 +83,18 @@ public class MainActivity extends AppCompatActivity {
             //如果刚启动的话
             AskForPermission();
             GetMediaInfo();
+            NewSession();
         }
         myBindService();
     }
 
     private void InitUI(){
         tbtScreenCaptureService = (ToggleButton) findViewById(R.id.tbt_screen_capture_service);
-        if(SESSION_TYPE == TYPE_VIDEO_CAMERA) {
-            camera2VideoFragment = CameraManagerFragment.getInstance();
-            getFragmentManager().beginTransaction()
-                    .replace(R.id.container,camera2VideoFragment )
-                    .commit();
-        }
+        camera2VideoFragment = CameraManagerFragment.getInstance();
+        getFragmentManager().beginTransaction()
+                .replace(R.id.container,camera2VideoFragment )
+                .commit();
+
 
     }
 
@@ -115,13 +120,7 @@ public class MainActivity extends AppCompatActivity {
 
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         Log.v(TAG,"onActivityResult");
-        if(SESSION_TYPE == TYPE_VIDEO_H264){
-            mMediaProjection = mMediaProjectionManager.getMediaProjection(resultCode,data);
-            session.setMediaProjection(mMediaProjection);
-        }
-
-
-
+        mMediaProjection = mMediaProjectionManager.getMediaProjection(resultCode,data);
     }
     private void AskForPermission(){
         if (Build.VERSION.SDK_INT >= 23) {
@@ -195,41 +194,34 @@ public class MainActivity extends AppCompatActivity {
         MediaMetadataRetriever retr = new MediaMetadataRetriever();
         retr.setDataSource(VIDEO_PATH);
         Bitmap bm = retr.getFrameAtTime();
-        mScreenWidth = bm.getWidth();
-        mScreenHeight = bm.getHeight();
-        mScreenDensity = bm.getDensity();
+        mFileWidth = bm.getWidth();
+        mFileHeight = bm.getHeight();
+        mFileDensity = bm.getDensity();
         Log.v(TAG,"mScreenWidth is :"+mScreenWidth+";mScreenHeight is :"+mScreenHeight+"mScreenDensity is :"+mScreenDensity);
     }
 
     private void GetCameraInfo(){
-//        DisplayMetrics metrics = new DisplayMetrics();
-//        WindowManager mWindowManager = (WindowManager)getApplication().getSystemService(getApplication().WINDOW_SERVICE);
-//        mWindowManager.getDefaultDisplay().getMetrics(metrics);
-//        mScreenDensity = metrics.densityDpi;
-//        mScreenWidth = metrics.widthPixels;
-//        mScreenHeight = metrics.heightPixels;
-//        Log.v(TAG,"mScreenWidth is :"+mScreenWidth+";mScreenHeight is :"+mScreenHeight+"mScreenDensity is :"+mScreenDensity);
+
     }
     private void GetMediaInfo(){
-        if(SESSION_TYPE == TYPE_VIDEO_H264){
-            GetWindowInfo();
-        }
-        if(SESSION_TYPE == TYPE_VIDEO_MP4_FILE){
-            GetMP4Info();
-        }
-        if(SESSION_TYPE == TYPE_VIDEO_CAMERA){
-            GetCameraInfo();
-        }
+        GetWindowInfo();
+        GetMP4Info();
+        GetCameraInfo();
     }
 
-    private void SetSession(){
-        Log.v(TAG,"SetSessionBuilder()");
-        session = new Session(SESSION_TYPE,VIDEO_PATH,null,mDestinationPort,
-                new VideoQuality(mScreenWidth,mScreenHeight,30,8000000,mScreenDensity),200,
+    private void NewSession(){
+        Log.v(TAG,"NewSession()");
+        screenVideoQuality = new VideoQuality(mScreenWidth,mScreenHeight,30,8000000,mScreenDensity);
+        fileVideoQulity = new VideoQuality(mFileWidth,mFileHeight,30,8000000,mFileDensity);
+        session = new Session(0,VIDEO_PATH,null,mDestinationPort,
+                screenVideoQuality,200,
                 null,mOriginPort,null);
-        if(SESSION_TYPE == TYPE_VIDEO_CAMERA){
-            camera2VideoFragment.setSession(session);
-        }
+        session.setScreenVideoQuality(screenVideoQuality);
+        session.setFileVideoQulity(fileVideoQulity);
+
+    }
+    private void SetSession(){
+        session.setMediaProjection(mMediaProjection);
     }
 
     private void myShareScreen(){
@@ -243,9 +235,8 @@ public class MainActivity extends AppCompatActivity {
         if(!RunState.getInstance().isRun()){
             myStopService();
         }
-        if(SESSION_TYPE == TYPE_VIDEO_CAMERA){
-            camera2VideoFragment.StopCameraManager();
-        }
+        camera2VideoFragment.StopCameraManager();
+
         super.onDestroy();
 
     }

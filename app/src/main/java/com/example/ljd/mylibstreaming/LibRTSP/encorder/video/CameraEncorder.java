@@ -31,6 +31,7 @@ public class CameraEncorder extends VideoEncorder {
         this.mRequestedQuality = session.getVideoQuality();
     }
 
+
     public void encodeWithMediaCodec() throws RuntimeException {
 
         Log.d(TAG, "Video encoded using the MediaCodec API with a surface");

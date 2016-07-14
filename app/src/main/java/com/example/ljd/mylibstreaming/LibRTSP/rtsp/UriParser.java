@@ -8,6 +8,7 @@ import android.content.ContentValues;
 import android.hardware.Camera;
 import android.util.Log;
 
+import com.example.ljd.mylibstreaming.LibRTSP.quality.VideoQuality;
 import com.example.ljd.mylibstreaming.LibRTSP.session.AbstractSessionFactory;
 import com.example.ljd.mylibstreaming.LibRTSP.session.Session;
 import com.example.ljd.mylibstreaming.LibRTSP.session.VideoSessionFactory;
@@ -46,9 +47,23 @@ public class UriParser {
      */
     public static Session parse(String uri,Session sessionForClone) throws IllegalStateException, IOException {
         //当解析得到的结果，要求产生一个视频session时。
+        int sessionType = 1;
+        VideoQuality videoQuality = sessionForClone.getScreenVideoQuality();
+        if(uri.contains("screen")){
+            sessionType = 1;
+            videoQuality = sessionForClone.getScreenVideoQuality();
+        }else if(uri.contains("camera")){
+            sessionType = 2;
+            videoQuality = sessionForClone.getVideoQuality();
+        }else if(uri.contains("movie")){
+            sessionType = 3;
+            videoQuality = sessionForClone.getFileVideoQulity();
+        }else{
+
+        }
         AbstractSessionFactory mSessionFactory = VideoSessionFactory.getInstance();
-        Session mSession = mSessionFactory.CreatSession(sessionForClone.getSessionType(),sessionForClone.getVideoPath(),sessionForClone.getDestination(),sessionForClone.getDestinationPort()
-                ,sessionForClone.getVideoQuality(),sessionForClone.getTimeToLive(),
+        Session mSession = mSessionFactory.CreatSession(sessionType,sessionForClone.getVideoPath(),sessionForClone.getDestination(),sessionForClone.getDestinationPort()
+                ,videoQuality,sessionForClone.getTimeToLive(),
                 sessionForClone.getOrigin(),sessionForClone.getOriginPort(),sessionForClone.getMediaProjection());
         return mSession;
     }

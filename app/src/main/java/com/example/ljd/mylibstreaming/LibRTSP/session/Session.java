@@ -34,6 +34,13 @@ public class Session {
 
 
 
+    private VideoQuality screenVideoQuality;
+
+
+
+    private VideoQuality fileVideoQulity;
+
+
     private int sessionType = 0;
     private int TYPE_VIDEO_H264 = 1;
     private int TYPE_VIDEO_CAMERA = 2;
@@ -201,6 +208,22 @@ public class Session {
 
     public void setSurfaceView(SurfaceView surfaceView) {
         this.surfaceView = surfaceView;
+    }
+
+    public VideoQuality getScreenVideoQuality() {
+        return screenVideoQuality;
+    }
+
+    public void setScreenVideoQuality(VideoQuality screenVideoQuality) {
+        this.screenVideoQuality = screenVideoQuality;
+    }
+
+    public VideoQuality getFileVideoQulity() {
+        return fileVideoQulity;
+    }
+
+    public void setFileVideoQulity(VideoQuality fileVideoQulity) {
+        this.fileVideoQulity = fileVideoQulity;
     }
 
     /**

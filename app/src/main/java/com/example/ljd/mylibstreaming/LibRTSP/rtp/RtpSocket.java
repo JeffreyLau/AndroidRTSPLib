@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class RtpSocket implements Runnable{
     public static final String TAG = "RtpSocket";
-    private boolean VERBOSE = true;
+    private boolean VERBOSE = false;
     public static final int RTP_HEADER_LENGTH = 12;
     public static final int MTU = 1300;
 
@@ -230,6 +230,7 @@ public class RtpSocket implements Runnable{
         try {
             // Caches mCacheSize milliseconds of the stream in the FIFO.
             Thread.sleep(mCacheSize);
+            if(VERBOSE)Log.v(TAG,"Thread.sleep(mCacheSize);" + mCacheSize);
             long delta = 0;
             while (mBufferCommitted.tryAcquire(4,TimeUnit.SECONDS)) {
                 if (mOldTimestamp != 0) {
@@ -238,26 +239,28 @@ public class RtpSocket implements Runnable{
                     if ((mTimestamps[mBufferOut]-mOldTimestamp)>0) {
                         stats.push(mTimestamps[mBufferOut]-mOldTimestamp);
                         long d = stats.average()/1000000;
-                        //Log.d(TAG,"delay: "+d+" d: "+(mTimestamps[mBufferOut]-mOldTimestamp)/1000000);
+                        if(VERBOSE)Log.d(TAG,"delay: "+d+" d: "+(mTimestamps[mBufferOut]-mOldTimestamp)/1000000);
                         // We ensure that packets are sent at a constant and suitable rate no matter how the RtpSocket is used.
                         //由于采用的生产者/消费者模式。导致视频采样时间不能无限大，而是与网络发送时间相匹配。
                         //时间戳即为首字节的采样时间，通过时间戳可以计算出采样的时间间隔。
                         //然后通过这个时间间隔，设定为网络发送的时间间隔。
                         //if (mCacheSize>0)
+
                         Thread.sleep(d);//拥塞控制
+
                     } else if ((mTimestamps[mBufferOut]-mOldTimestamp)<0) {
-                        Log.e(TAG, "TS: "+mTimestamps[mBufferOut]+" OLD: "+mOldTimestamp);
+                        if(VERBOSE)Log.e(TAG, "TS: "+mTimestamps[mBufferOut]+" OLD: "+mOldTimestamp);
                     }
                     delta += mTimestamps[mBufferOut]-mOldTimestamp;
                     if (delta>500000000 || delta<0) {
-                        //Log.d(TAG,"permits: "+mBufferCommitted.availablePermits());
+                        if(VERBOSE)Log.d(TAG,"permits: "+mBufferCommitted.availablePermits());
                         delta = 0;
                     }
                 }
                 mReport.update(mPackets[mBufferOut].getLength(), (mTimestamps[mBufferOut]/100L)*(mClock/1000L)/10000L);
                 mOldTimestamp = mTimestamps[mBufferOut];
                 if (mCount++>30) {
-                    //Log.v(TAG,"mSocket.send(mPackets[mBufferOut]);");
+                    if(VERBOSE)Log.v(TAG,"mSocket.send(mPackets[mBufferOut]);");
                     mSocket.send(mPackets[mBufferOut]);
                 }
                 if (++mBufferOut>=mBufferCount) mBufferOut = 0;
