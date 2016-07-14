@@ -1,12 +1,14 @@
 
 一、这是一个基于Android平台的RTSP直播、点播服务器。
 
-二、实现三个功能：/r/n
+二、实现三个功能：
+
     1、将屏幕图像实时推流
     2、将摄像头图像实时推流
     3、将本地mp4、3gp格式的视频文件推流。
 
 三、使用方式
+
     1、客户端可以使用VLC等播放器播放视频流。
     2、播放器输入的链接格式为 rtsp://IP地址:端口号/选项
     3、选项包括：screen（实时获取Android手机、平板屏幕图像）
@@ -22,7 +24,9 @@
               rtsp://192.168.1.20:1234          （默认情况下，实时获取Android手机、平板屏幕图像）
     
     
-  四、参考fyhertz的libstreaming制作
-        libstreaming连接：
+四、参考
+
+    1、参考fyhertz的libstreaming制作
+    2、libstreaming连接：
               https://github.com/fyhertz/libstreaming
     
