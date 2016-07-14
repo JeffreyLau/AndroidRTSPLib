@@ -80,7 +80,8 @@ public class CameraManagerFragment extends Fragment
 
     private static final int REQUEST_VIDEO_PERMISSIONS = 1;
     private static final String FRAGMENT_DIALOG = "dialog";
-    List<Surface> MediaCodecInputSurfaces;
+    List<Surface> MediaCodecInputSurfaces= new ArrayList<>();
+    List<Surface> CaptureSessionInputSurfaces = new ArrayList<>();
 
     public Session getSession() {
         return session;
@@ -353,14 +354,17 @@ public class CameraManagerFragment extends Fragment
      */
     private void stopBackgroundThread() {
         if(VERBOSE) Log.v(TAG,"private void stopBackgroundThread()");
-        mBackgroundThread.quitSafely();
-        try {
-            mBackgroundThread.join();
-            mBackgroundThread = null;
-            mBackgroundHandler = null;
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+        if(mBackgroundThread != null) {
+            mBackgroundThread.quitSafely();
+            try {
+                mBackgroundThread.join();
+                mBackgroundThread = null;
+                mBackgroundHandler = null;
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
+
     }
 
     /**
@@ -501,7 +505,7 @@ public class CameraManagerFragment extends Fragment
                 //                                          int[] grantResults)
                 // to handle the case where the user grants the permission. See the documentation
                 // for ActivityCompat#requestPermissions for more details.
-                Log.v(TAG,"没有相机权限");
+                Log.e(TAG,"没有相机权限");
                 return;
             }
             manager.openCamera(cameraId, mStateCallback, null);
@@ -653,18 +657,22 @@ public class CameraManagerFragment extends Fragment
             assert texture != null;
             texture.setDefaultBufferSize(mPreviewSize.getWidth(), mPreviewSize.getHeight());
             mPreviewBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_RECORD);
-            MediaCodecInputSurfaces = new ArrayList<>();
 
             // Set up Surface for the camera preview
             Surface previewSurface = new Surface(texture);
-            MediaCodecInputSurfaces.add(previewSurface);
-            mPreviewBuilder.addTarget(previewSurface);
+            CaptureSessionInputSurfaces.clear();//清空输入surface
+            CaptureSessionInputSurfaces.add(previewSurface);//加入屏幕预览surface
+            mPreviewBuilder.addTarget(previewSurface);//屏幕预览surface，加入CaptureRequest.Builder
             ////////////////////////////////////////////////////////
             //视频录制 surface
             ////////////////////////////////////////////////////
             // Set up Surface for the MediaRecorder
-            MediaCodecInputSurfaces.add(mRecorderSurface);
-            mPreviewBuilder.addTarget(mRecorderSurface);
+            MediaCodecInputSurfaces.add(mRecorderSurface);//每一个新的连接都会加入一个mRecorderSurface
+            //mPreviewBuilder.addTarget(mRecorderSurface);
+            for(Surface surface:MediaCodecInputSurfaces){
+                CaptureSessionInputSurfaces.add(surface);
+                mPreviewBuilder.addTarget(surface);//包括编码器的surface加入CaptureRequest.Builder
+            }
 
             // Start a capture session
             // Once the session starts, we can update the UI and start recording
@@ -678,7 +686,8 @@ public class CameraManagerFragment extends Fragment
     public void StartCreateData(){
         try {
             //后台线程执行
-            mCameraDevice.createCaptureSession(MediaCodecInputSurfaces, new CameraCaptureSession.StateCallback() {
+            //将surface的list送入
+            mCameraDevice.createCaptureSession(CaptureSessionInputSurfaces, new CameraCaptureSession.StateCallback() {
 
                 @Override
                 public void onConfigured(@NonNull CameraCaptureSession cameraCaptureSession) {
@@ -689,7 +698,7 @@ public class CameraManagerFragment extends Fragment
 
                 @Override
                 public void onConfigureFailed(@NonNull CameraCaptureSession cameraCaptureSession) {
-                    if(VERBOSE)Log.v(TAG,"StartCreateData() -> onConfigureFailed");
+                    if(VERBOSE)Log.e(TAG,"StartCreateData() -> onConfigureFailed");
                 }
             }, mBackgroundHandler);
         } catch (CameraAccessException e) {

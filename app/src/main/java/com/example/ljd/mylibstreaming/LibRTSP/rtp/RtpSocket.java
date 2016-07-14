@@ -244,7 +244,7 @@ public class RtpSocket implements Runnable{
                         //时间戳即为首字节的采样时间，通过时间戳可以计算出采样的时间间隔。
                         //然后通过这个时间间隔，设定为网络发送的时间间隔。
                         //if (mCacheSize>0)
-                            Thread.sleep(d);//拥塞控制
+                        Thread.sleep(d);//拥塞控制
                     } else if ((mTimestamps[mBufferOut]-mOldTimestamp)<0) {
                         Log.e(TAG, "TS: "+mTimestamps[mBufferOut]+" OLD: "+mOldTimestamp);
                     }

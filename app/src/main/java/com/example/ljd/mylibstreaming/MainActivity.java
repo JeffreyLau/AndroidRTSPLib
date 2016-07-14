@@ -68,7 +68,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         //功能设置
-        SESSION_TYPE = TYPE_VIDEO_MP4_FILE;
+        SESSION_TYPE = TYPE_VIDEO_CAMERA;
         //设置视频文件路径
         VIDEO_PATH = SDCARD_PATH+"/ljd/mp4/dxflqm.mp4";
 
@@ -78,10 +78,6 @@ public class MainActivity extends AppCompatActivity {
             //如果刚启动的话
             AskForPermission();
             GetMediaInfo();
-            SetSession();
-        }
-        if(SESSION_TYPE == TYPE_VIDEO_CAMERA){
-
         }
         myBindService();
     }
@@ -106,6 +102,7 @@ public class MainActivity extends AppCompatActivity {
                     RunState.getInstance().setRun(false);
                     Toast.makeText(MainActivity.this, "屏幕录制服务停止运行", Toast.LENGTH_SHORT).show();
                 } else {
+                    SetSession();
                     myShareScreen();
                     RunState.getInstance().setRun(true);
                     Toast.makeText(MainActivity.this, "屏幕录制服务开始运行", Toast.LENGTH_SHORT).show();
@@ -205,13 +202,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void GetCameraInfo(){
-        DisplayMetrics metrics = new DisplayMetrics();
-        WindowManager mWindowManager = (WindowManager)getApplication().getSystemService(getApplication().WINDOW_SERVICE);
-        mWindowManager.getDefaultDisplay().getMetrics(metrics);
-        mScreenDensity = metrics.densityDpi;
-        mScreenWidth = metrics.widthPixels;
-        mScreenHeight = metrics.heightPixels;
-        Log.v(TAG,"mScreenWidth is :"+mScreenWidth+";mScreenHeight is :"+mScreenHeight+"mScreenDensity is :"+mScreenDensity);
+//        DisplayMetrics metrics = new DisplayMetrics();
+//        WindowManager mWindowManager = (WindowManager)getApplication().getSystemService(getApplication().WINDOW_SERVICE);
+//        mWindowManager.getDefaultDisplay().getMetrics(metrics);
+//        mScreenDensity = metrics.densityDpi;
+//        mScreenWidth = metrics.widthPixels;
+//        mScreenHeight = metrics.heightPixels;
+//        Log.v(TAG,"mScreenWidth is :"+mScreenWidth+";mScreenHeight is :"+mScreenHeight+"mScreenDensity is :"+mScreenDensity);
     }
     private void GetMediaInfo(){
         if(SESSION_TYPE == TYPE_VIDEO_H264){

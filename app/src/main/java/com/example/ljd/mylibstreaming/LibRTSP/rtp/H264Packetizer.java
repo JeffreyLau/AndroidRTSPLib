@@ -12,7 +12,7 @@ import java.io.IOException;
  * Created by ljd-pc on 2016/6/22.
  */
 public class H264Packetizer extends AbstractPacketizer implements Runnable{
-    private boolean VERBOSE = true;
+    private boolean VERBOSE = false;
     public final static String TAG = "H264Packetizer";
 
     private Thread t = null;
