@@ -30,6 +30,9 @@ public class VideoStreamFactory extends AbstractStreamFactory {
         if(mSession.getSessionType() == 1) {
             return new H264Stream(mMediaCodec, mSession);
         }
+        if(mSession.getSessionType() == 2) {
+            return new H264Stream(mMediaCodec, mSession);
+        }
         if(mSession.getSessionType() == 3){
             return new H264Stream(mediaExtractor,mSession);
         }

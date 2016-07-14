@@ -11,9 +11,13 @@ import android.os.IBinder;
 import android.support.annotation.Nullable;
 import android.util.Base64;
 import android.util.Log;
+import android.util.Size;
+import android.view.Surface;
 
+import com.example.ljd.mylibstreaming.LibRTSP.camera.CameraManagerFragment;
 import com.example.ljd.mylibstreaming.LibRTSP.encorder.AbstractEncorderFactory;
 import com.example.ljd.mylibstreaming.LibRTSP.encorder.MediaEncorder;
+import com.example.ljd.mylibstreaming.LibRTSP.encorder.video.CameraEncorder;
 import com.example.ljd.mylibstreaming.LibRTSP.encorder.video.VideoEncorderFactory;
 import com.example.ljd.mylibstreaming.LibRTSP.session.AbstractSessionFactory;
 import com.example.ljd.mylibstreaming.LibRTSP.session.Session;
@@ -346,6 +350,7 @@ public class RtspServer extends Service {
         private AbstractEncorderFactory mEncorderFactory;
         private MediaStream mediaStream;
         private MediaEncorder mediaEncorder;
+        private CameraManagerFragment cameraManagerFragment;
 
         public WorkerThread(final Socket client) throws IOException {
             mInput = new BufferedReader(new InputStreamReader(client.getInputStream()));
@@ -443,9 +448,31 @@ public class RtspServer extends Service {
                         if(VERBOSE) Log.v(TAG,"sessionType == 1");
                         mStreamFactory = VideoStreamFactory.getInstance();
                         mEncorderFactory = VideoEncorderFactory.getInstance();
+                        //连接输入surface，准备好mediaCodec
                         mediaEncorder = mEncorderFactory.CreateEncorder(mSession);
                         mediaEncorder.encodeWithMediaCodec();
                         mediaCodec = mediaEncorder.getMediaEncorder1();
+                        //传入mediaCodec，从输出buffer读数据
+                        mediaStream =  mStreamFactory.CreateStream(mediaCodec,null,mSession);
+                        mMediaCodecs.put(mediaCodec,mediaCodec);
+                        mMediaStreams.put(mediaStream,mediaStream);
+                    }
+                    if(sessionType == 2){
+                        if(VERBOSE) Log.v(TAG,"sessionType == 2");
+                        mStreamFactory = VideoStreamFactory.getInstance();
+                        mEncorderFactory = VideoEncorderFactory.getInstance();
+                        cameraManagerFragment = CameraManagerFragment.getInstance();
+                        //连接输入surface，准备好mediaCodec
+                        Size videoSize = cameraManagerFragment.getVideoSize();
+                        mSession.getVideoQuality().setmWidth(videoSize.getWidth());
+                        mSession.getVideoQuality().setmHeight(videoSize.getHeight());
+                        mediaEncorder = mEncorderFactory.CreateEncorder(mSession);
+                        mediaEncorder.encodeWithMediaCodec();
+                        mediaCodec = mediaEncorder.getMediaEncorder1();
+                        Surface surface = ((CameraEncorder)mediaEncorder).getSurface();
+                        cameraManagerFragment.SetMediaCodecInputSurface(surface);
+                        cameraManagerFragment.StartCreateData();
+                        //传入mediaCodec，从输出buffer读数据
                         mediaStream =  mStreamFactory.CreateStream(mediaCodec,null,mSession);
                         mMediaCodecs.put(mediaCodec,mediaCodec);
                         mMediaStreams.put(mediaStream,mediaStream);

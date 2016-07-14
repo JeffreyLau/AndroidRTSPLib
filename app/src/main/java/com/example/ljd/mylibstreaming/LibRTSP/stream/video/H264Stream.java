@@ -55,6 +55,9 @@ public class H264Stream extends VideoStream {
         if(session.getSessionType() == 1) {
             mPpsSpsGetter = new PpsSpsGetter(mRequestedQuality);
         }
+        if(session.getSessionType() == 2){
+            mPpsSpsGetter = new PpsSpsGetter(mRequestedQuality);
+        }
         if (session.getSessionType() == 3){
             mPpsSpsGetter = new PpsSpsGetter(session.getVideoPath());
         }
@@ -71,6 +74,9 @@ public class H264Stream extends VideoStream {
             byte[] sps = Base64.decode(mPpsSpsGetter.getB64SPS(), Base64.NO_WRAP);
             ((H264Packetizer)mPacketizer).setStreamParameters(pps, sps);
             if(mSession.getSessionType() == 1){
+                inputStream = new MediaCodecInputStream(mMediaCodec);
+            }
+            if(mSession.getSessionType() == 2){
                 inputStream = new MediaCodecInputStream(mMediaCodec);
             }
             if(mSession.getSessionType() == 3){

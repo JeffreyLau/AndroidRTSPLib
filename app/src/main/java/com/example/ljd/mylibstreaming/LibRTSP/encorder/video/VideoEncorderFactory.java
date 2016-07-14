@@ -32,8 +32,10 @@ public class VideoEncorderFactory extends AbstractEncorderFactory {
     public MediaEncorder CreateEncorder(Session session) {
         if(session.getSessionType() == 1) {
             return new H264Encorder(session.getVideoQuality(), session.getMediaProjection());
-        } else if(session.getSessionType() == 3){
+        } else if(session.getSessionType() == 3) {
             return new MP4Encorder(session);
+        } else if(session.getSessionType() == 2){
+            return new CameraEncorder(session);
         }else{
             return null;
         }

@@ -26,7 +26,7 @@ import android.widget.CompoundButton;
 import android.widget.Toast;
 import android.widget.ToggleButton;
 
-import com.example.ljd.mylibstreaming.LibRTSP.camera.Camera2VideoFragment;
+import com.example.ljd.mylibstreaming.LibRTSP.camera.CameraManagerFragment;
 import com.example.ljd.mylibstreaming.LibRTSP.quality.VideoQuality;
 import com.example.ljd.mylibstreaming.LibRTSP.rtsp.RtspServer;
 import com.example.ljd.mylibstreaming.LibRTSP.session.Session;
@@ -61,14 +61,14 @@ public class MainActivity extends AppCompatActivity {
     private Session session;
 
     private CameraManager mCameraManager;
-    private Camera2VideoFragment camera2VideoFragment;
+    private CameraManagerFragment camera2VideoFragment;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         //功能设置
-        SESSION_TYPE = TYPE_VIDEO_CAMERA;
+        SESSION_TYPE = TYPE_VIDEO_MP4_FILE;
         //设置视频文件路径
         VIDEO_PATH = SDCARD_PATH+"/ljd/mp4/dxflqm.mp4";
 
@@ -80,18 +80,20 @@ public class MainActivity extends AppCompatActivity {
             GetMediaInfo();
             SetSession();
         }
-        if(SESSION_TYPE == TYPE_VIDEO_CAMERA) {
-            camera2VideoFragment = Camera2VideoFragment.newInstance();
-            getFragmentManager().beginTransaction()
-                    .replace(R.id.container,camera2VideoFragment )
-                    .commit();
-            camera2VideoFragment.setSession(session);
+        if(SESSION_TYPE == TYPE_VIDEO_CAMERA){
+
         }
         myBindService();
     }
 
     private void InitUI(){
         tbtScreenCaptureService = (ToggleButton) findViewById(R.id.tbt_screen_capture_service);
+        if(SESSION_TYPE == TYPE_VIDEO_CAMERA) {
+            camera2VideoFragment = CameraManagerFragment.getInstance();
+            getFragmentManager().beginTransaction()
+                    .replace(R.id.container,camera2VideoFragment )
+                    .commit();
+        }
 
     }
 
@@ -228,6 +230,9 @@ public class MainActivity extends AppCompatActivity {
         session = new Session(SESSION_TYPE,VIDEO_PATH,null,mDestinationPort,
                 new VideoQuality(mScreenWidth,mScreenHeight,30,8000000,mScreenDensity),200,
                 null,mOriginPort,null);
+        if(SESSION_TYPE == TYPE_VIDEO_CAMERA){
+            camera2VideoFragment.setSession(session);
+        }
     }
 
     private void myShareScreen(){
@@ -242,7 +247,7 @@ public class MainActivity extends AppCompatActivity {
             myStopService();
         }
         if(SESSION_TYPE == TYPE_VIDEO_CAMERA){
-
+            camera2VideoFragment.StopCameraManager();
         }
         super.onDestroy();
 
